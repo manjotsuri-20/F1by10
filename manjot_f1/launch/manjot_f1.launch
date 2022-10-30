@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<launch>
+
+  <include file="$(find f1tenth_simulator)/launch/simulator.launch"/>
+
+  <!-- <node pkg="manjot_f1" name="max_min" type="max_min" output = "screen"/> -->
+
+  <node pkg="manjot_f1" name="safety_node" type="safety_node" output="screen">
+    <rosparam command="load" file="$(find manjot_f1)/params/params.yaml"/>
+  </node>
+
+</launch>
