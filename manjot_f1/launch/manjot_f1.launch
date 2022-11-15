@@ -9,4 +9,6 @@
     <rosparam command="load" file="$(find manjot_f1)/params/params.yaml"/>
   </node>
 
+  <node pkg="manjot_f1" name="wall_follow" type="wall_follow" output = "screen"/>
+
 </launch>

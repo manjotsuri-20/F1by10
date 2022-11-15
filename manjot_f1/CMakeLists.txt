@@ -150,6 +150,10 @@ add_executable(safety_node src/safety_node.cpp)
 target_link_libraries(safety_node ${catkin_LIBRARIES})
 add_dependencies(safety_node manjot_f1_generate_message_cpp)
 
+add_executable(wall_follow src/wall_follow.cpp)
+target_link_libraries(wall_follow ${catkin_LIBRARIES})
+add_dependencies(wall_follow manjot_f1_generate_message_cpp)
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
