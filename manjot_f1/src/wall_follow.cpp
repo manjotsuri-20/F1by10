@@ -3,12 +3,6 @@
 #include <sensor_msgs/LaserScan.h>
 #include <ackermann_msgs/AckermannDrive.h>
 #include <ackermann_msgs/AckermannDriveStamped.h>
-// #define ANGLE_RANGE 270
-#define CAR_LENGTH 0.50 //0.5 metres
-#define DESIRED_DISTANCE_FROM_LEFT 0.7
-#define kp 0.06
-#define kd 0.00031
-#define ki 1.0
 
 class WallFollow
 {
@@ -16,7 +10,7 @@ class WallFollow
     ros::NodeHandle n;
     ros::Subscriber scan_sub;
     ros::Publisher drive_pub;
-    double inte_err, diff_err, pre_err;
+    double car_length, desired_distance_from_left, kp, ki, kd;
 
     public:
     WallFollow()
@@ -24,9 +18,26 @@ class WallFollow
         n = ros::NodeHandle();
         scan_sub = n.subscribe("/scan", 1, &WallFollow::lidar_callback, this);
         drive_pub = n.advertise<ackermann_msgs::AckermannDriveStamped>("/nav", 1);
-        inte_err = 0.0;
-        diff_err = 0.0;
-        pre_err = 0.0;
+        if(!n.getParam("wall_follow/car_length", car_length))
+        {
+            ROS_ERROR("car_length not found");
+        }
+        if(!n.getParam("wall_follow/desired_distance_from_left", desired_distance_from_left))
+        {
+            ROS_ERROR("desired distance not specified");
+        }
+        if(!n.getParam("wall_follow/kp", kp))
+        {
+            ROS_ERROR("value of kp not specified not specified");
+        }
+        if(!n.getParam("wall_follow/kd", kd))
+        {
+            ROS_ERROR("value of kd not specified not specified");
+        }
+        if(!n.getParam("wall_follow/ki", ki))
+        {
+            ROS_ERROR("value of ki not specified not specified");
+        }
     }
 
     void lidar_callback(const sensor_msgs::LaserScan &scan_msg)
@@ -61,19 +72,14 @@ class WallFollow
         ackermann_msgs::AckermannDriveStamped drive_msgs;
 
         //use kp, ki and kd to implement a PID controller for
-        // this->diff_err = error - this->pre_err;
-        // this->inte_err = this->inte_err + error;
-        // this->pre_err = error;
-        // ROS_INFO("err = %f, diff_err = %f, int_err = %f", error, this->diff_err, this->inte_err);
-        // angle = (-kp * error) + (-ki * this->inte_err) + (-kd * diff_err);
-        // ROS_INFO("Angle %f", angle);
-
         angle = ((kd*error*error)+(kp*error)+ki)/((error*error*error)+((10+kd)*error*error)+((20+kp)*error)+ki);
 
+        //calculating the velocity from the turning angles
         if(angle > -0.174533 && angle < 0.174533) velocity = 1.5;
         else if (angle >= 0.174533 && angle <= -0.174533 && angle < 0.349 && angle > -0.349) velocity = 1.0;
         else velocity = 0.5;
 
+        //publishing the data to the /nav topic 
         drive_msgs.header.stamp = ros::Time::now();
         drive_msgs.header.frame_id = "laser";
         drive_msgs.drive.steering_angle = angle;
@@ -86,8 +92,8 @@ class WallFollow
         //follow left wall as per the algorithm
         double alpha, d;
         alpha = atan2((a*cos(theta) - b), (a*sin(theta)));
-        d = b * cos(alpha) + CAR_LENGTH * sin(alpha);
-        return d - DESIRED_DISTANCE_FROM_LEFT;
+        d = b * cos(alpha) + car_length * sin(alpha);
+        return d - desired_distance_from_left;
     }
 };
 
