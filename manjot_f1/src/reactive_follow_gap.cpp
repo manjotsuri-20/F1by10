@@ -59,6 +59,8 @@ class reactiveFollowGap
             //1.Setting each value to the mean over some window
             //2.Rejecting high values (eg. > 3m)
 
+            //narrowing down the view of the lidar i.e. total readings divide by 5
+            //and returning the shorter range
             std::vector<float> for_range;
             int start = 432, end = 648;
             for(int i = start; i < end ; i ++ )
@@ -81,10 +83,11 @@ class reactiveFollowGap
             //Return index of best point in ranges
 	        //Naive: Choose the furthest point within ranges and go there
 
+            //calculating the angle from the front vertical axis 
+            //and then returning the angle
             auto dis = std::distance(range.begin(), std::max_element(range.begin(), range.end()));
             int diff = dis - range.size()/2;
             double angle = diff * inc;
-            std::cout << dis << " " << range.size()/2 << " " << diff << " " << angle << std::endl;
             return angle;
         }
 
@@ -101,11 +104,17 @@ class reactiveFollowGap
 
             //Find Closest point to lidar
             auto dis = std::distance(proc_ranges.begin(), std::min_element(proc_ranges.begin(), proc_ranges.end()));
+
+            //checking whether the obstacle is under the threshould or outside the
+            //threshould region. If inside the threshould then avoiding the obstacle
+            //else moving straight
             if(proc_ranges[dis] < obstacle_thresh)
             {
                 //Eliminate all points inside 'bubble' (set them to zero)
                 int i = 0;
                 int dist = dis;
+
+                //setting the nearby values of nearest point to zero so as to avoid the obstacle
                 while(i < 17 && dist > 0)
                 {
                     proc_ranges[dist] = 0.0;
@@ -160,12 +169,6 @@ class reactiveFollowGap
                 else velocity = -0.5;
             }
             else velocity = 1.5;
-
-            // if(angle > -0.174533 && angle < 0) velocity = 1.5;
-            // else if(angle < 0.174533 && angle > 0) velocity = -1.5;
-            // else if (angle >= 0.174533 && angle < 0.349) velocity = 1.0;
-            // else if(angle <=-0.174533 && angle >= -0.349) velocity = -1.0;
-            // else velocity = 0.5;
 
             //publishing the data to the /nav topic 
             drive_msgs.header.stamp = ros::Time::now();
