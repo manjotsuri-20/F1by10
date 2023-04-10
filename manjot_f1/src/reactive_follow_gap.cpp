@@ -78,7 +78,7 @@ class reactiveFollowGap
             std::vector<int> max_ind, not_chosen;
             
             int prev = 0;
-            int max_gap = 5;
+            int max_gap = 3;
             int chosen_ind = 0;
 
             //checking the max_gap on the basis of largest gap in the array around the local maxima
@@ -122,9 +122,9 @@ class reactiveFollowGap
             {
                 //checking if the index to be selected is resisted to be selected because that index contains zero
                 auto it = std::find(not_chosen.begin(), not_chosen.end(), i.first);
-                if(i.second > max_gap && it != not_chosen.end()) 
+                if(i.second > max_gap) 
                 {
-                    if(*it == i.first)
+                    if(it != not_chosen.end() && *it == i.first)
                     {
                         continue;
                     }
