@@ -6,6 +6,10 @@
 
 #define car_width 0.2032 //metres
 #define obstacle_thresh 1.5
+// #define kp 0.250
+// #define ki 0.01
+// #define kd 20
+
 
 /*
     Lidar Readings array indices
@@ -24,8 +28,6 @@ class reactiveFollowGap
         std::string lidarscan_topic;
         std::string drive_topic;
 
-        double kp, ki, kd;
-
     public:
         reactiveFollowGap()
         {
@@ -38,19 +40,6 @@ class reactiveFollowGap
             drive_pub = n_rea.advertise<ackermann_msgs::AckermannDriveStamped>(drive_topic, 1);
             lidar_sub = n_rea.subscribe(lidarscan_topic, 1, &reactiveFollowGap::lidar_callback, this);
 
-
-            if(!n_rea.getParam("wall_follow/kp", kp))
-            {
-                ROS_ERROR("value of kp not specified not specified");
-            }
-            if(!n_rea.getParam("wall_follow/kd", kd))
-            {
-                ROS_ERROR("value of kd not specified not specified");
-            }
-            if(!n_rea.getParam("wall_follow/ki", ki))
-            {
-                ROS_ERROR("value of ki not specified not specified");
-            }
         }
 
         std::vector<float> preprocess_lidar(std::vector<float> range)
@@ -62,12 +51,56 @@ class reactiveFollowGap
             //narrowing down the view of the lidar i.e. total readings divide by 5
             //and returning the shorter range
             std::vector<float> for_range;
-            int start = 432, end = 648;
+            int start = 270, end = 810;
             for(int i = start; i < end ; i ++ )
             {
                 for_range.emplace_back(range[i]);
             }
             return for_range;
+        }
+
+        int find_max_gap_var(std::vector<float> range)
+        {
+            int start_ind = 0, last_ind = range.size() - 1;
+            bool enc = false;
+            std::vector<std::pair<int, int>> gaps;
+
+            //creating the gaps when there is no 0 value and storing first and last 
+            //index of those gaps in a vector
+            for(int i = 0; i < range.size(); i++)
+            {
+                if(range[i] == 0 && enc == false)
+                {
+                    last_ind = i - 1;
+                    enc = true;
+                    gaps.emplace_back(std::make_pair(start_ind, last_ind));
+                }
+                else if(enc == true && range[i] != 0)
+                {
+                    start_ind = i;
+                    enc = false;
+                }
+                else if(enc == false && i == range.size() - 1)
+                {
+                    last_ind = i;
+                    gaps.emplace_back(std::make_pair(start_ind, last_ind));
+                }
+            }
+
+            int chosen_ind = range.size()/2;
+            int min_gap = 4;
+
+            //chosing the largest gap from all the gaps encountered
+            for(auto i : gaps)
+            {
+                if(i.second - i.first > min_gap)
+                {
+                    min_gap = i.second - i.first;
+                    chosen_ind = (i.first + i.second)/2;
+                }
+            }
+
+            return chosen_ind;
         }
 
         int find_max_gap(std::vector<float> range)
@@ -78,7 +111,7 @@ class reactiveFollowGap
             std::vector<int> max_ind, not_chosen;
             
             int prev = 0;
-            int max_gap = 3;
+            int max_gap = 4;
             int chosen_ind = 0;
 
             //checking the max_gap on the basis of largest gap in the array around the local maxima
@@ -96,16 +129,29 @@ class reactiveFollowGap
             //creating a map with the index and the gap at that index
             for(int i = 0; i < max_ind.size(); i++)
             {
-                max.insert(std::pair<int, int>(max_ind[i], max_ind[i] - prev));
-                prev = max_ind[i];
+                if(i == 0)
+                {
+                    max.insert(std::pair<int, int>(max_ind[i], max_ind[i+1]));
+                    prev = max_ind[i];
+                }
+                else if(i == max_ind.size() - 1)
+                {
+                    max.insert(std::pair<int, int>(max_ind[i], range.size() - prev));
+                }
+                else
+                {
+                    max.insert(std::pair<int, int>(max_ind[i], max_ind[i+1] - prev));
+                    prev = max_ind[i];
+                }
             }
 
             //removing the gap having zeroes.
+            int prev_ind = 0;
             for(auto i : max)
             {   
                 if(i.second > max_gap)
                 {
-                    for(int j = i.first - i.second; j <= i.first; j++)
+                    for(int j = prev_ind; j <= prev_ind + i.second; j++)
                     {
                         if(range[j] == 0) // If the element is 0 it means the obstacle is very near so it needs to be removed
                         {
@@ -115,9 +161,11 @@ class reactiveFollowGap
                         }
                     }
                 }
+                prev_ind = i.first;
             }
 
             //checking the largest gap
+            int prev_i = 0;
             for(auto i : max)
             {
                 //checking if the index to be selected is resisted to be selected because that index contains zero
@@ -129,8 +177,9 @@ class reactiveFollowGap
                         continue;
                     }
                     max_gap = i.second;
-                    chosen_ind = i.first - (i.second/2);
+                    chosen_ind = prev_i + i.second/2;
                 }
+                prev_i = i.first;
             }
 
             return chosen_ind;
@@ -147,8 +196,7 @@ class reactiveFollowGap
             //and then returning the angle
             // auto dis = std::distance(range.begin(), std::max_element(range.begin(), range.end()));
             int diff = dis - range.size()/2;
-            double angle = diff * inc;
-            return angle;
+            return double(diff*inc);
         }
 
         void lidar_callback(const sensor_msgs::LaserScan &scan_msg)
@@ -193,7 +241,8 @@ class reactiveFollowGap
                 float inc = scan_msg.angle_increment;
 
                 //Find max length gap
-                auto index = this->find_max_gap(proc_ranges);
+                // auto index = this->find_max_gap(proc_ranges);
+                auto index = this->find_max_gap_var(proc_ranges);
 
                 //Find the best point in the gap
                 angle = this->find_best_point(proc_ranges, inc, index);
@@ -212,8 +261,10 @@ class reactiveFollowGap
             double velocity;
             ackermann_msgs::AckermannDriveStamped drive_msgs;
 
+            //angle on right is negative and on left is positive
+            
             //use kp, ki and kd to implement a PID controller for
-            // angle = ((kd*error*error)+(kp*error)+ki)/((error*error*error)+((10+kd)*error*error)+((20+kp)*error)+ki);
+            // angle = ((kd*angle*angle)+(kp*angle)+ki)/((angle*angle*angle)+((10+kd)*angle*angle)+((20+kp)*angle)+ki);
 
             //calculating the velocity from the turning angles
             if(angle < 0.174533 && angle > -0.174533) velocity = 1.5;

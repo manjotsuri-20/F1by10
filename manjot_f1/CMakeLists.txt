@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 project(manjot_f1)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++11)
 
 #Adding g flag for debugging
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
@@ -127,7 +127,7 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+include
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -147,19 +147,15 @@ include_directories(
 # add_executable(${PROJECT_NAME}_node src/manjot_f1_node.cpp)
 add_executable(max_min src/max_min_scan.cpp)
 target_link_libraries(max_min ${catkin_LIBRARIES})
-add_dependencies(max_min manjot_f1_generate_message_cpp)
 
 add_executable(safety_node src/safety_node.cpp)
 target_link_libraries(safety_node ${catkin_LIBRARIES})
-add_dependencies(safety_node manjot_f1_generate_message_cpp)
 
 add_executable(wall_follow src/wall_follow.cpp)
 target_link_libraries(wall_follow ${catkin_LIBRARIES})
-add_dependencies(wall_follow manjot_f1_generate_message_cpp)
 
 add_executable(reactive_follow_gap src/reactive_follow_gap.cpp)
 target_link_libraries(reactive_follow_gap ${catkin_LIBRARIES})
-add_dependencies(reactive_follow_gap manjot_f1_generate_message_cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
