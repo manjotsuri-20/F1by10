@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<launch>
+
+  <include file="$(find f1tenth_simulator)/launch/simulator.launch"/>
+
+  <!-- <node pkg="f1_pkg" name="max_min" type="max_min" output = "screen"/> -->
+
+  <node pkg="f1_pkg" name="safety_node" type="safety_node" output="screen">
+    <rosparam command="load" file="$(find f1_pkg)/params/params.yaml"/>
+  </node>
+
+  <node pkg="f1_pkg" name="wall_follow" type="wall_follow" output = "screen">
+    <rosparam command="load" file="$(find f1_pkg)/params/params_pid.yaml"/>
+  </node>
+
+  <!-- <node pkg="f1_pkg" name="reactive_follow_gap" type="reactive_follow_gap" output = "screen">
+    <rosparam command="load" file="$(find f1_pkg)/params/params_pid.yaml"/>
+  </node> -->
+
+</launch>

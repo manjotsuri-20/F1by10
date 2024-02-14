@@ -27,7 +27,7 @@
 
 ## Run
 
-    roslaunch manjot_f1 manjot_f1.launch
+    roslaunch f1_pkg f1.launch
 
 ### Press 'K' to turn on keyboard controls with WASD controls.
 
