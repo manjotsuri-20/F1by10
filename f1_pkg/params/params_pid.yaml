@@ -1,5 +1,5 @@
 car_length: 0.50
 desired_distance_from_left: 0.7
-kp: 0.250
-kd: 20.0
-ki: 0.001
+kp: 2.0 #0.250
+ki: 0.0 #0.001
+kd: 5.0 #20.0

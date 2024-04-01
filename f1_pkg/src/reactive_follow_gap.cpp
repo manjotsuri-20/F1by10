@@ -4,6 +4,8 @@
 #include <ackermann_msgs/AckermannDrive.h>
 #include <ackermann_msgs/AckermannDriveStamped.h>
 
+#include <f1_pkg/pid_law.h>
+
 #define car_width 0.2032 //metres
 #define obstacle_thresh 1.5
 // #define kp 0.250
@@ -28,10 +30,14 @@ class reactiveFollowGap
         std::string lidarscan_topic;
         std::string drive_topic;
 
+        pidLaw* pid_law;
+
     public:
         reactiveFollowGap()
         {
             n_rea = ros::NodeHandle();
+
+            pid_law = new pidLaw(n_rea);
 
             //Topics and Subscribers, Publishers
             lidarscan_topic = "/scan";
@@ -40,6 +46,11 @@ class reactiveFollowGap
             drive_pub = n_rea.advertise<ackermann_msgs::AckermannDriveStamped>(drive_topic, 1);
             lidar_sub = n_rea.subscribe(lidarscan_topic, 1, &reactiveFollowGap::lidar_callback, this);
 
+        }
+
+        ~reactiveFollowGap()
+        {
+            delete pid_law;
         }
 
         std::vector<float> preprocess_lidar(std::vector<float> range)
@@ -265,6 +276,7 @@ class reactiveFollowGap
             
             //use kp, ki and kd to implement a PID controller for
             // angle = ((kd*angle*angle)+(kp*angle)+ki)/((angle*angle*angle)+((10+kd)*angle*angle)+((20+kp)*angle)+ki);
+            angle = pid_law->calculateError(angle);
 
             //calculating the velocity from the turning angles
             if(angle < 0.174533 && angle > -0.174533) velocity = 1.5;

@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_msgs
   message_generation
+  dynamic_reconfigure
 )
 
 ## System dependencies are found with CMake's conventions
@@ -96,10 +97,10 @@ generate_messages(
 ##     and list every .cfg file to be processed
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#   cfg/DynReconf1.cfg
+generate_dynamic_reconfigure_options(
+  cfg/pid_param.cfg
 #   cfg/DynReconf2.cfg
-# )
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -126,6 +127,7 @@ catkin_package(
 include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
+  include/
 )
 
 ## Declare a C++ library
@@ -142,7 +144,8 @@ target_link_libraries(safety_node ${catkin_LIBRARIES})
 add_executable(wall_follow src/wall_follow.cpp)
 target_link_libraries(wall_follow ${catkin_LIBRARIES})
 
-add_executable(reactive_follow_gap src/reactive_follow_gap.cpp)
+add_executable(reactive_follow_gap src/reactive_follow_gap.cpp src/pid_law.cpp)
+add_dependencies(reactive_follow_gap ${PROJECT_NAME}_gencfg)
 target_link_libraries(reactive_follow_gap ${catkin_LIBRARIES})
 
 ## Add cmake target dependencies of the library

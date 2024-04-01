@@ -9,12 +9,12 @@
     <rosparam command="load" file="$(find f1_pkg)/params/params.yaml"/>
   </node>
 
-  <node pkg="f1_pkg" name="wall_follow" type="wall_follow" output = "screen">
-    <rosparam command="load" file="$(find f1_pkg)/params/params_pid.yaml"/>
-  </node>
-
-  <!-- <node pkg="f1_pkg" name="reactive_follow_gap" type="reactive_follow_gap" output = "screen">
+  <!-- <node pkg="f1_pkg" name="wall_follow" type="wall_follow" output = "screen">
     <rosparam command="load" file="$(find f1_pkg)/params/params_pid.yaml"/>
   </node> -->
+
+  <node pkg="f1_pkg" name="reactive_follow_gap" type="reactive_follow_gap" output = "screen">
+    <rosparam command="load" file="$(find f1_pkg)/params/params_pid.yaml"/>
+  </node>
 
 </launch>
