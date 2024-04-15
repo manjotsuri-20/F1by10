@@ -40,4 +40,8 @@ double pidLaw::calculateError(double err)
 void pidLaw::reconfigureCallback(f1_pkg::pid_paramConfig &config, uint32_t level)
 {
     ROS_INFO("Parameters Updated");
+    std::cout << "value of kp updated: "<< config.kp << std::endl;
+    std::cout << "value of ki updated: "<< config.ki << std::endl;
+    std::cout << "value of kd updated: "<< config.kd << std::endl;
+
 }
