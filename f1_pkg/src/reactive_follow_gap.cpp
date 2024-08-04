@@ -117,7 +117,7 @@ void reactiveFollowGap::find_max_gap()
         std::cout << "[REACTIVE FOLLOW GAP][INFO] Lidar Range Size Zero\n";
         return;
     }
-    m_best_index = m_lidarRangseProcessed.size() / 2; //go straight if no gap found
+    m_best_index = m_lidarRangeProcessed.size() / 2; //go straight if no gap found
 
     //creating the gaps when there is no 0 value and storing first and last 
     //index of those gaps in a vector
