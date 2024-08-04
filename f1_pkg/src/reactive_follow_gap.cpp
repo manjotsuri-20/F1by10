@@ -100,11 +100,7 @@ void reactiveFollowGap::preprocess_lidar()
     {
         for(int i = start; i <= end ; i ++ )
         {
-            if( m_lidarRange[i] > m_maxObstacleThreshould ) // to have maximum range not so far
-            {
-                m_lidarRange[i] = m_maxObstacleThreshould;
-            }
-            m_lidarRangeProcessed.emplace_back(m_lidarRange[i]);
+            m_lidarRangeProcessed.emplace_back(m_lidarRange[i] < m_maxObstacleThreshould ? m_lidarRange[i] : m_maxObstacleThreshould); // to have maximum range not so far
         }
     }
 }
@@ -121,7 +117,7 @@ void reactiveFollowGap::find_max_gap()
         std::cout << "[REACTIVE FOLLOW GAP][INFO] Lidar Range Size Zero\n";
         return;
     }
-    m_best_index = m_lidarRangeProcessed.size()/2; //go straight if no 
+    m_best_index = m_lidarRangseProcessed.size() / 2; //go straight if no gap found
 
     //creating the gaps when there is no 0 value and storing first and last 
     //index of those gaps in a vector
@@ -183,7 +179,7 @@ void reactiveFollowGap::calculate_disparity()
                 {
                     val = m_lidarRangeProcessed[i - 1];
                 }
-                m_lidarRangeProcessed[i] = val;
+                m_lidarRangeProcessed[i] = val + 0.2;
                 j++; i++;   
             }
         }
@@ -199,7 +195,7 @@ void reactiveFollowGap::calculate_disparity()
                 {
                     val = m_lidarRangeProcessed[i];
                 }
-                m_lidarRangeProcessed[i - 1] = val;
+                m_lidarRangeProcessed[i - 1] = val + 0.2;
                 j++; i--;
             }
             i += numberOfReadings;
@@ -347,7 +343,7 @@ void reactiveFollowGap::run()
         {
             preprocess_lidar(); //Preprocessed ranges
         
-            calculate_disparity();
+            // calculate_disparity(); not using it currently
 
             avoid_nearest_obstacles();
             
