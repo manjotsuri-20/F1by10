@@ -5,8 +5,10 @@ scan_topic: "/scan"
 drive_topic: "/nav"
 start_angle: 110 #field of view to avoid in degree (0 to 360)
 end_angle: 250 #field of view to aoid in degree (0 to 360)
-debug: true
+debug: false
 debug_scan: "/debug_scan"
+debug_marker: "/visualization_marker"
+debug_gap: "/gap_visualization"
 detect_disparity_threshould: 0.8
 max_speed: 7.0
 min_gap_size: 7 #increase this if your robot is going too close to the obstacles

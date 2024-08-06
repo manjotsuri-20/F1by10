@@ -7,6 +7,8 @@
 #include <sensor_msgs/LaserScan.h>
 #include <ackermann_msgs/AckermannDrive.h>
 #include <ackermann_msgs/AckermannDriveStamped.h>
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
 
 #include <f1_pkg/pid_law.h>
 
@@ -45,6 +47,8 @@ class reactiveFollowGap
         ros::NodeHandle n_rea;
         ros::Publisher drive_pub;
         ros::Publisher debug_scan_pub;
+        ros::Publisher vis_pub;
+        ros::Publisher vis_gap_pub;
         ros::Subscriber lidar_sub;
 
         pidLaw* pid_law;
@@ -53,6 +57,8 @@ class reactiveFollowGap
         double m_turnAngle = 0.0;
         std::string m_scanTopic;
         std::string m_debugScanTopic;
+        std::string m_debugMarkerTopic;
+        std::string m_debugGapTopic;
         std::string m_driveTopic;
 
         //lidar data
@@ -85,37 +91,86 @@ class reactiveFollowGap
          * @brief load all the parameters required by reactive follow gap node
         */
         void getParams();
+        
+        /**
+         * @brief Create a publishers and subscribers object
+         * 
+         */
+        void create_publishers_and_subscribers();
 
-        //Preprocess the LiDAR scan array. Expert implementation includes:
-        //1.Setting each value to the mean over some window
-        //2.Rejecting high values (eg. > 3m)
-        //narrowing down the view of the lidar i.e. total readings divide by 5
-        //and returning the shorter range
+        /**
+         * @brief Preprocess the LiDAR scan array. Expert implementation includes:
+        1.Setting each value to the mean over some window
+        2.Rejecting high values (eg. > 3m)
+        narrowing down the view of the lidar i.e. total readings divide by 5
+        and returning the shorter range
+         * 
+         */
         void preprocess_lidar();
 
-        //finding the largest gap
+        /**
+         * @brief finding the largest gap
+         * 
+         */
         void find_max_gap();
 
+        /**
+         * @brief avoid the whole range of obstacles in the defined radius
+         * 
+         * @param index 
+         * @param noOfReadings 
+         */
         void avoid_whole_bubble(int index, int noOfReadings);
 
+        /**
+         * @brief Avoid nearest obstacles i.e.obstacles which are nearer than a threshould distance
+         * 
+         */
         void avoid_nearest_obstacles();
 
-        // to calculte disparity among the lidar readings in order to choose the best gap
+        /**
+         * @brief to calculte disparity among the lidar readings in order to choose the best gap
+         * 
+         */
         void calculate_disparity();
 
-        //Start_i & end_i are start and end indicies of max-gap range, respectively
-        //Return index of best point in ranges
-        //Naive: Choose the furthest point within ranges and go there
+        /**
+         * @brief Start_i & end_i are start and end indicies of max-gap range, respectively
+        Return index of best point in ranges
+        Naive: Choose the furthest point within ranges and go there
 
-        //calculating the angle from the front vertical axis 
-        //and then returning the angle
+        calculating the angle from the front vertical axis 
+        and then returning the angle
+         * 
+         */
         void find_best_point();
 
-        //debug processed scan
+        /**
+         * @brief debug processed scan
+         * 
+         */
         void publish_debug_scan();
 
-        //Process each LIDAR scan as per the Follow Gap algorithms 
-        //& publish an AckermannDriveStamped Message 
+        /**
+         * @brief Visualise the best index chosen
+         * 
+         */
+        void publish_marker();
+
+        /**
+         * @brief publish the gap which is chosen finally
+         * 
+         * @param begin 
+         * @param end 
+         */
+        void publish_gap(int begin, int end);
+
+        /**
+         * @brief Process each LIDAR scan as per the Follow Gap algorithms 
+        & publish an AckermannDriveStamped Message 
+         * 
+         * @param scan_msg 
+         */
         void lidar_callback(const sensor_msgs::LaserScan &scan_msg);
 
         /**

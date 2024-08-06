@@ -10,9 +10,12 @@ reactiveFollowGap::reactiveFollowGap(ros::NodeHandle nh) : n_rea(nh)
 
     getParams();
 
-    drive_pub = n_rea.advertise<ackermann_msgs::AckermannDriveStamped>(m_driveTopic, 1);
-    debug_scan_pub = n_rea.advertise<sensor_msgs::LaserScan>(m_debugScanTopic, 1);
-    lidar_sub = n_rea.subscribe(m_scanTopic, 1, &reactiveFollowGap::lidar_callback, this);
+    create_publishers_and_subscribers();
+
+    if( m_debug )
+    {
+        std::cout << "[REACTIVE FOLLOW GAP][INFO] Debug Mode is ON.\n";
+    }
 
     rf = std::thread(&reactiveFollowGap::run, this);  
 }
@@ -71,6 +74,16 @@ void reactiveFollowGap::getParams()
         std::cerr << "Debug scan parameter not found\n";
         std::exit(EXIT_FAILURE);
     }
+    if(!n_rea.getParam("reactive_follow_gap/debug_marker", m_debugMarkerTopic))
+    {
+        std::cerr << "Debug marker parameter not found\n";
+        std::exit(EXIT_FAILURE);
+    }
+    if(!n_rea.getParam("reactive_follow_gap/debug_gap", m_debugGapTopic))
+    {
+        std::cerr << "Debug gap parameter not found\n";
+        std::exit(EXIT_FAILURE);
+    }
     if(!n_rea.getParam("reactive_follow_gap/detect_disparity_threshould", m_detectDisparityTreshould))
     {
         std::cerr << "Detect disparity threshould parameter not found\n";
@@ -86,6 +99,18 @@ void reactiveFollowGap::getParams()
         std::cerr << "Minimum Gap Size parameter not found\n";
         std::exit(EXIT_FAILURE);
     }
+}
+
+void reactiveFollowGap::create_publishers_and_subscribers()
+{
+    //Publishers
+    drive_pub = n_rea.advertise<ackermann_msgs::AckermannDriveStamped>(m_driveTopic, 1);
+    debug_scan_pub = n_rea.advertise<sensor_msgs::LaserScan>(m_debugScanTopic, 1);
+    vis_pub = n_rea.advertise<visualization_msgs::Marker>(m_debugMarkerTopic, 1);
+    vis_gap_pub = n_rea.advertise<visualization_msgs::MarkerArray>(m_debugGapTopic, 1);
+
+    //Subscribers
+    lidar_sub = n_rea.subscribe(m_scanTopic, 1, &reactiveFollowGap::lidar_callback, this);
 }
 
 void reactiveFollowGap::preprocess_lidar()
@@ -150,14 +175,21 @@ void reactiveFollowGap::find_max_gap()
         }
     }
 
+    int debug_start = m_lidarRangeProcessed.size()/2, debug_end = m_lidarRangeProcessed.size()/2;
     //chosing the largest gap from all the gaps encountered
     for(auto i : gaps)
     {
         if((i.second - i.first) > m_minGapSize && (i.second - i.first) > max_gap)
         {
+            debug_start = i.first; debug_end = i.second;
             max_gap = i.second - i.first; //update max_gap
             m_best_index = (i.first + i.second)/2;
         }
+    }
+
+    if( m_debug )
+    {
+        publish_gap(debug_start, debug_end);
     }
 }
 
@@ -310,6 +342,79 @@ void reactiveFollowGap::publish_debug_scan()
     debug_scan_pub.publish(scan_msg);
 }
 
+void reactiveFollowGap::publish_marker()
+{
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = "laser";
+    marker.header.stamp = ros::Time::now();
+    marker.ns = "index";
+    marker.id = 0;
+    marker.type = visualization_msgs::Marker::ARROW;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose.position.x = m_lidarRangeProcessed[m_best_index] * cos(m_turnAngle);
+    marker.pose.position.y = m_lidarRangeProcessed[m_best_index] * sin(m_turnAngle);
+    marker.pose.position.z = 0.0;
+    marker.pose.orientation.x = 0.0;
+    marker.pose.orientation.y = 0.0;
+    marker.pose.orientation.z = 0.0;
+    marker.pose.orientation.w = 1.0;
+    marker.scale.x = 0.5;
+    marker.scale.y = 0.05;
+    marker.scale.z = 0.05;
+    marker.color.a = 1.0; // Don't forget to set the alpha!
+    marker.color.r = 1.0;
+    marker.color.g = 0.0;
+    marker.color.b = 0.0;
+    vis_pub.publish(marker);
+}
+
+void reactiveFollowGap::publish_gap(int begin, int end)
+{
+    visualization_msgs::MarkerArray marker_array;
+    std::pair<double, double> gap[2];
+
+    double angle = 0.0;
+    int diff = 0;
+
+    //Filling the value of first point
+    diff = begin - m_lidarRangeProcessed.size() / 2;
+    angle =  double(diff * m_lidarAngleIncrement);
+    gap[0] = std::make_pair(m_lidarRangeProcessed[begin], angle);
+
+    //Filling the value of second point
+    diff = end - m_lidarRangeProcessed.size() / 2;
+    angle =  double(diff * m_lidarAngleIncrement);
+    gap[1] = std::make_pair(m_lidarRangeProcessed[end], angle);
+
+    for(int i = 0; i < 2; i++) //for displaying 2 points
+    {
+        visualization_msgs::Marker marker;
+        marker.header.frame_id = "laser";
+        marker.header.stamp = ros::Time::now();
+        marker.ns = "index";
+        marker.id = i;
+        marker.type = visualization_msgs::Marker::ARROW;
+        marker.action = visualization_msgs::Marker::ADD;
+        marker.pose.position.x = gap[i].first * cos(gap[i].second);
+        marker.pose.position.y = gap[i].first * sin(gap[i].second);
+        marker.pose.position.z = 0.0;
+        marker.pose.orientation.x = 0.0;
+        marker.pose.orientation.y = 0.0;
+        marker.pose.orientation.z = 0.0;
+        marker.pose.orientation.w = 1.0;
+        marker.scale.x = 0.5;
+        marker.scale.y = 0.05;
+        marker.scale.z = 0.05;
+        marker.color.a = 1.0; // Don't forget to set the alpha!
+        marker.color.r = 0.0;
+        marker.color.g = 1.0;
+        marker.color.b = 0.0;
+        marker_array.markers.push_back(marker);
+    }
+    
+    vis_gap_pub.publish(marker_array);
+}
+
 void reactiveFollowGap::lidar_callback(const sensor_msgs::LaserScan &scan_msg)
 {
     // std::unique_lock<std::mutex> lock(m_lidarMutex);
@@ -350,6 +455,7 @@ void reactiveFollowGap::run()
             if( m_debug )
             {
                 publish_debug_scan();
+                publish_marker();
             } 
 
             find_max_gap(); //Find max length gap
