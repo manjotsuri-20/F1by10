@@ -73,6 +73,7 @@ class reactiveFollowGap
         float m_startAngle = 0.0, m_endAngle = 0.0, m_maxSpeed = 0.0;
         float m_detectDisparityTreshould = 0.0;
         bool m_debug = false;
+        bool m_real_gap_found{false};
 
         std::thread rf;
 

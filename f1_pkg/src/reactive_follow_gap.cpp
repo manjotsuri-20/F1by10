@@ -16,6 +16,10 @@ reactiveFollowGap::reactiveFollowGap(ros::NodeHandle nh) : n_rea(nh)
     {
         std::cout << "[REACTIVE FOLLOW GAP][INFO] Debug Mode is ON.\n";
     }
+    else
+    {
+        std::cout << "[REACTIVE FOLLOW GAP][INFO] Debug Mode is OFF.\n";
+    }
 
     rf = std::thread(&reactiveFollowGap::run, this);  
 }
@@ -148,13 +152,13 @@ void reactiveFollowGap::find_max_gap()
     //index of those gaps in a vector
     for(int i = 0; i < m_lidarRangeProcessed.size(); i++)
     {
-        if(m_lidarRangeProcessed[i] == 0 && enc == false)
+        if(m_lidarRangeProcessed[i] <= m_minObstacleThreshould && enc == false)
         {
             last_ind = i - 1;
             enc = true;
             gaps.emplace_back(std::make_pair(start_ind, last_ind));
         }
-        else if(enc == true && m_lidarRangeProcessed[i] != 0)
+        else if(enc == true && m_lidarRangeProcessed[i] > m_minObstacleThreshould)
         {
             start_ind = i;
             enc = false;
@@ -163,15 +167,6 @@ void reactiveFollowGap::find_max_gap()
         {
             last_ind = i;
             gaps.emplace_back(std::make_pair(start_ind, last_ind));
-        }
-    }
-
-
-    if( m_debug )
-    {
-        if(gaps.size() == 0)
-        {
-            std::cout << "[REACTIVE FOLLOW GAP][INFO] No Gaps Found\n";
         }
     }
 
@@ -184,11 +179,20 @@ void reactiveFollowGap::find_max_gap()
             debug_start = i.first; debug_end = i.second;
             max_gap = i.second - i.first; //update max_gap
             m_best_index = (i.first + i.second)/2;
+            m_real_gap_found = true;
+        }
+        else
+        {
+            m_real_gap_found = false;
         }
     }
 
     if( m_debug )
     {
+        if( !m_real_gap_found )
+        {
+            std::cout << "[REACTIVE FOLLOW GAP][DEBUG] No Gaps Found\n";
+        }
         publish_gap(debug_start, debug_end);
     }
 }
@@ -256,7 +260,7 @@ void reactiveFollowGap::avoid_whole_bubble(int index, int noOfReadings)
     {
         while(i < noOfReadings && temp_index > 0)
         {
-            m_lidarRangeProcessed[temp_index] = 0.0;
+            m_lidarRangeProcessed[temp_index] = m_minObstacleThreshould;
             temp_index--;
             i++;
         }
@@ -267,7 +271,7 @@ void reactiveFollowGap::avoid_whole_bubble(int index, int noOfReadings)
     {
         while(i < noOfReadings && temp_index < m_lidarNumberOfRays)
         {
-            m_lidarRangeProcessed[temp_index] = 0.0;
+            m_lidarRangeProcessed[temp_index] = m_minObstacleThreshould;
             temp_index++;
             i++;
         } 
@@ -292,7 +296,7 @@ void reactiveFollowGap::avoid_nearest_obstacles()
 
 void reactiveFollowGap::pid_control()
 {
-    double velocity;
+    double velocity = 0.0;
     ackermann_msgs::AckermannDriveStamped drive_msgs;
 
     //angle on right is negative and on left is positive
@@ -304,18 +308,30 @@ void reactiveFollowGap::pid_control()
 
     // velocity = (m_maxSpeed / (m_turnAngle + 1.0)); // linear function for increasing and decreasing velocity
 
-    //calculating the velocity from the turning angles
-    if(fabs(m_turnAngle) < 0.08)
+    if( m_real_gap_found )
     {
-        velocity = m_maxSpeed;
+        //calculating the velocity from the turning angles
+        if(fabs(m_turnAngle) < 0.08)
+        {
+            velocity = m_maxSpeed;
+        }
+        else if(fabs(m_turnAngle) < 0.349) 
+        {
+            velocity = 3.5;
+        }
+        else 
+        {
+            velocity = 2.0;
+        }
     }
-    else if(fabs(m_turnAngle) < 0.349) 
+    else
     {
-        velocity = 3.5;
-    }
-    else 
-    {
-        velocity = 2.0;
+        if( m_debug )
+        {
+            std::cout << "[REACTIVE FOLLOW GAP][DEBUG] Publishing Zero Velocity\n";
+        }
+        m_turnAngle = 0.0;
+        velocity = 0.0;
     }
 
     //publishing the data to the /nav topic 
@@ -448,7 +464,7 @@ void reactiveFollowGap::run()
         {
             preprocess_lidar(); //Preprocessed ranges
         
-            // calculate_disparity(); not using it currently
+            // calculate_disparity(); //not using it currently
 
             avoid_nearest_obstacles();
             
