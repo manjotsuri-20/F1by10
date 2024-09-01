@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
 
-  <include file="$(find f1tenth_simulator)/launch/simulator.launch"/>
+  <!-- <include file="$(find f1tenth_simulator)/launch/simulator.launch"/> -->
 
   <!-- <node pkg="f1_pkg" name="max_min" type="max_min" output = "screen"/> -->
 

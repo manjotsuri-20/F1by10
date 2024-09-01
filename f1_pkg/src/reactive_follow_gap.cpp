@@ -14,7 +14,7 @@ reactiveFollowGap::reactiveFollowGap(ros::NodeHandle nh) : n_rea(nh)
 
     if( m_debug )
     {
-        std::cout << "[REACTIVE FOLLOW GAP][INFO] Debug Mode is ON.\n";
+        std::cout << GREEN << "[REACTIVE FOLLOW GAP][DEBUG] Debug Mode is ON.\n" << RESET;
     }
     else
     {
@@ -140,6 +140,7 @@ void reactiveFollowGap::find_max_gap()
     bool enc = false;
     std::vector<std::pair<int, int>> gaps;
     int max_gap = INT_MIN;
+    int debug_start = m_lidarRangeProcessed.size()/2, debug_end = m_lidarRangeProcessed.size()/2;
 
     if( m_lidarRangeProcessed.size() <= 0 )
     {
@@ -170,7 +171,8 @@ void reactiveFollowGap::find_max_gap()
         }
     }
 
-    int debug_start = m_lidarRangeProcessed.size()/2, debug_end = m_lidarRangeProcessed.size()/2;
+    m_real_gap_found = false;
+
     //chosing the largest gap from all the gaps encountered
     for(auto i : gaps)
     {
@@ -181,17 +183,13 @@ void reactiveFollowGap::find_max_gap()
             m_best_index = (i.first + i.second)/2;
             m_real_gap_found = true;
         }
-        else
-        {
-            m_real_gap_found = false;
-        }
     }
 
     if( m_debug )
     {
         if( !m_real_gap_found )
         {
-            std::cout << "[REACTIVE FOLLOW GAP][DEBUG] No Gaps Found\n";
+            std::cout << GREEN << "[REACTIVE FOLLOW GAP][DEBUG] No Gaps Found\n" << RESET;
         }
         publish_gap(debug_start, debug_end);
     }
@@ -317,7 +315,7 @@ void reactiveFollowGap::pid_control()
         }
         else if(fabs(m_turnAngle) < 0.349) 
         {
-            velocity = 3.5;
+            velocity = 3.0;
         }
         else 
         {
