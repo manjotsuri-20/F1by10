@@ -18,7 +18,7 @@ reactiveFollowGap::reactiveFollowGap(ros::NodeHandle nh) : n_rea(nh)
     }
     else
     {
-        std::cout << "[REACTIVE FOLLOW GAP][INFO] Debug Mode is OFF.\n";
+        std::cout << GREEN << "[REACTIVE FOLLOW GAP][INFO] Debug Mode is OFF.\n" << RESET;
     }
 
     rf = std::thread(&reactiveFollowGap::run, this);  
