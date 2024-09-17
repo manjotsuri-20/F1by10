@@ -3,15 +3,10 @@
 reactiveFollowGap::reactiveFollowGap(ros::NodeHandle nh) : n_rea(nh)
 {
     std::cout << "[REACTIVE FOLLOW GAP][INFO] Reactive Follow Gap Constructor called\n";
-
     is_running = true;
-
     pid_law = new pidLaw(n_rea);
-
     getParams();
-
     create_publishers_and_subscribers();
-
     if( m_debug )
     {
         std::cout << GREEN << "[REACTIVE FOLLOW GAP][DEBUG] Debug Mode is ON.\n" << RESET;
@@ -20,7 +15,6 @@ reactiveFollowGap::reactiveFollowGap(ros::NodeHandle nh) : n_rea(nh)
     {
         std::cout << GREEN << "[REACTIVE FOLLOW GAP][INFO] Debug Mode is OFF.\n" << RESET;
     }
-
     rf = std::thread(&reactiveFollowGap::run, this);  
 }
 
@@ -452,7 +446,7 @@ void reactiveFollowGap::run()
 
             switch(m_avoidanceMethod)
             {
-                case 0:  avoid_nearest_obstacles();
+                case 0: avoid_nearest_obstacles();
                     break;
 
                 case 1: calculate_disparity();
@@ -469,9 +463,7 @@ void reactiveFollowGap::run()
             } 
 
             find_max_gap(); //Find max length gap
-
-            find_best_point();
-                
+            find_best_point(); 
             pid_control(); //Publish drive message
             lock.unlock();
         }
