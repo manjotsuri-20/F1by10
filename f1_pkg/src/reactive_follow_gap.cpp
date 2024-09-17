@@ -103,6 +103,11 @@ void reactiveFollowGap::getParams()
         std::cerr << "Minimum Gap Size parameter not found\n";
         std::exit(EXIT_FAILURE);
     }
+    if(!n_rea.getParam("reactive_follow_gap/avoidance_method", m_avoidanceMethod))
+    {
+        std::cerr << "Avoidance method parameter not found\n";
+        std::exit(EXIT_FAILURE);
+    }
 }
 
 void reactiveFollowGap::create_publishers_and_subscribers()
@@ -199,13 +204,14 @@ void reactiveFollowGap::calculate_disparity()
 {
     for(int i = 1; i < m_lidarRangeProcessed.size(); i++) // starting from 1 because subtracting the previous index
     {
-        int j = 0, val = 0;
-        int numberOfReadings = m_carWidth / (m_lidarRangeProcessed[i] * m_lidarAngleIncrement);
+        int j{0}, numberOfReadings{0};
+        float val{0.0};
+        numberOfReadings = m_carWidth / (m_lidarRangeProcessed[i] * m_lidarAngleIncrement);
         if( m_lidarRangeProcessed[i] - m_lidarRangeProcessed[i - 1] > m_detectDisparityTreshould )
         {
             while(j < numberOfReadings)
             {
-                if( i >= m_lidarRangeProcessed.size()) //to end the loop if number of reading have become greater than the size.
+                if( (i + j) >= m_lidarRangeProcessed.size()) //to end the loop if number of reading have become greater than the size.
                 {
                     return;
                 }
@@ -213,26 +219,26 @@ void reactiveFollowGap::calculate_disparity()
                 {
                     val = m_lidarRangeProcessed[i - 1];
                 }
-                m_lidarRangeProcessed[i] = val + 0.2;
-                j++; i++;   
+                m_lidarRangeProcessed[i + j] = val;
+                j++;   
             }
+            i += j;
         }
         else if( m_lidarRangeProcessed[i - 1] - m_lidarRangeProcessed[i] > m_detectDisparityTreshould )
         {
             while (j < numberOfReadings)
             {
-                if( i < 1 )
+                if( (i - j) < 0 )
                 {
-                    return;
+                    break;
                 }
                 if( j == 0 )
                 {
                     val = m_lidarRangeProcessed[i];
                 }
-                m_lidarRangeProcessed[i - 1] = val + 0.2;
-                j++; i--;
+                m_lidarRangeProcessed[i - j] = val;
+                j++;
             }
-            i += numberOfReadings;
         }
     }
 }
@@ -298,29 +304,11 @@ void reactiveFollowGap::pid_control()
     ackermann_msgs::AckermannDriveStamped drive_msgs;
 
     //angle on right is negative and on left is positive
-    
-    //use kp, ki and kd to implement a PID controller for
-    // angle = ((kd*angle*angle)+(kp*angle)+ki)/((angle*angle*angle)+((10+kd)*angle*angle)+((20+kp)*angle)+ki);
-    // m_turnAngle = pid_law->calculateError(m_turnAngle);
-
-
-    // velocity = (m_maxSpeed / (m_turnAngle + 1.0)); // linear function for increasing and decreasing velocity
 
     if( m_real_gap_found )
     {
-        //calculating the velocity from the turning angles
-        if(fabs(m_turnAngle) < 0.08)
-        {
-            velocity = m_maxSpeed;
-        }
-        else if(fabs(m_turnAngle) < 0.349) 
-        {
-            velocity = 3.0;
-        }
-        else 
-        {
-            velocity = 2.0;
-        }
+        velocity = -std::exp(3.7 * std::abs(m_turnAngle)) + m_maxSpeed + 1; //exponential equation to decrease the speed with increase in turn angle.
+        velocity = velocity < 0 ? 1.5 : velocity;
     }
     else
     {
@@ -329,7 +317,7 @@ void reactiveFollowGap::pid_control()
             std::cout << "[REACTIVE FOLLOW GAP][DEBUG] Publishing Zero Velocity\n";
         }
         m_turnAngle = 0.0;
-        velocity = 0.0;
+        velocity = -1.0; //negative speed for a try to find a gap
     }
 
     //publishing the data to the /nav topic 
@@ -431,11 +419,12 @@ void reactiveFollowGap::publish_gap(int begin, int end)
 
 void reactiveFollowGap::lidar_callback(const sensor_msgs::LaserScan &scan_msg)
 {
-    // std::unique_lock<std::mutex> lock(m_lidarMutex);
+    std::unique_lock<std::mutex> lock(m_lidarMutex);
     m_lidarRange = scan_msg.ranges;
     m_lidarAngleIncrement = scan_msg.angle_increment;
     m_lidarNumberOfRays = (scan_msg.angle_max - scan_msg.angle_min) / scan_msg.angle_increment;    
     callback_running = true;
+    lock.unlock();
 }
 
 void reactiveFollowGap::publish_zero_velocity()
@@ -456,15 +445,22 @@ void reactiveFollowGap::run()
     while(!signalFlag && is_running)
     {
         // TIK("loop time")
-        // std::unique_lock<std::mutex> lock(m_lidarMutex);
-
         if( callback_running )
         {
+            std::unique_lock<std::mutex> lock(m_lidarMutex);
             preprocess_lidar(); //Preprocessed ranges
-        
-            // calculate_disparity(); //not using it currently
 
-            avoid_nearest_obstacles();
+            switch(m_avoidanceMethod)
+            {
+                case 0:  avoid_nearest_obstacles();
+                    break;
+
+                case 1: calculate_disparity();
+                    break;
+
+                default: 
+                    std::cout << RED << "[REACTIVE FOLLOW GAP][ERROR] No Avoidance method selected\n" << RESET;
+            }
             
             if( m_debug )
             {
@@ -477,12 +473,10 @@ void reactiveFollowGap::run()
             find_best_point();
                 
             pid_control(); //Publish drive message
+            lock.unlock();
         }
-
-        // lock.unlock();
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(2));
         // TOK("loop time")
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
 }
 

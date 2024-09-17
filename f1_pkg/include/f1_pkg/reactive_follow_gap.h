@@ -92,14 +92,14 @@ class reactiveFollowGap
         float m_detectDisparityTreshould = 0.0;
         bool m_debug = false;
         bool m_real_gap_found{false};
+        int m_avoidanceMethod{0};
 
         std::thread rf;
 
-        std::atomic_bool is_running{false};
+        std::atomic_bool is_running{false}, callback_running{false};
 
         std::mutex m_lidarMutex;
 
-        bool callback_running = false;
 
     public:
         reactiveFollowGap(ros::NodeHandle);
